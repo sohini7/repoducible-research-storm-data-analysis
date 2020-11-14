@@ -1,0 +1,125 @@
+---
+title: "NOAA Storm Database"
+author: "sohini mukherjee"
+date: "14/11/2020"
+output: html_document
+
+---
+
+Synopsis:
+Storms and other severe weather events can cause both public health and economic problems for communities and municipalities. Many severe events can result in fatalities, injuries, and property damage, and preventing such outcomes to the extent possible is a key concern.
+
+The objective of this project is to explore the U.S. National Oceanic and Atmospheric Administration’s (NOAA) storm database and to answer the following questions about severe weather events:
+
+Across the United States, which types of events are most harmful with respect to population health?
+Across the United States, which types of events have the greatest economic consequences?
+Pre Analysis
+Loading necessary packages. We will use dplyr to clean and explore data and ggplot2 to plot it.
+
+```{r}
+library(dplyr)
+library(ggplot2)
+library(knitr)
+library(readxl)
+```
+Loading and Processing the data
+
+```{r}
+noaa <- read.csv("repdata_data_StormData.csv")
+noaa <- noaa[, c('EVTYPE','FATALITIES','INJURIES', 'PROPDMG', 'PROPDMGEXP', 'CROPDMG', 'CROPDMGEXP')]
+noaa <- as_tibble(noaa)
+```
+```{r}
+#cleaning data
+unique(noaa$PROPDMGEXP)
+unique(noaa$CROPDMGEXP)
+noaa$PROPDMGVAL[noaa$PROPDMGEXP == "K"] <- 1000
+noaa$PROPDMGVAL[noaa$PROPDMGEXP == "M"] <- 1e+06
+noaa$PROPDMGVAL[noaa$PROPDMGEXP == ""] <- 1
+noaa$PROPDMGVAL[noaa$PROPDMGEXP == "B"] <- 1e+09
+noaa$PROPDMGVAL[noaa$PROPDMGEXP == "m"] <- 1e+06
+noaa$PROPDMGVAL[noaa$PROPDMGEXP == "0"] <- 1
+noaa$PROPDMGVAL[noaa$PROPDMGEXP == "5"] <- 1e+05
+noaa$PROPDMGVAL[noaa$PROPDMGEXP == "6"] <- 1e+06
+noaa$PROPDMGVAL[noaa$PROPDMGEXP == "4"] <- 10000
+noaa$PROPDMGVAL[noaa$PROPDMGEXP == "2"] <- 100
+noaa$PROPDMGVAL[noaa$PROPDMGEXP == "3"] <- 1000
+noaa$PROPDMGVAL[noaa$PROPDMGEXP == "h"] <- 100
+noaa$PROPDMGVAL[noaa$PROPDMGEXP == "7"] <- 1e+07
+noaa$PROPDMGVAL[noaa$PROPDMGEXP == "H"] <- 100
+noaa$PROPDMGVAL[noaa$PROPDMGEXP == "1"] <- 10
+noaa$PROPDMGVAL[noaa$PROPDMGEXP == "8"] <- 1e+08
+noaa$PROPDMGVAL[noaa$PROPDMGEXP == "+"] <- 0
+noaa$PROPDMGVAL[noaa$PROPDMGEXP == "-"] <- 0
+noaa$PROPDMGVAL[noaa$PROPDMGEXP == "?"] <- 0
+
+
+noaa$CROPDMGVAL[noaa$CROPDMGEXP == "K"] <- 1e+03
+noaa$CROPDMGVAL[noaa$CROPDMGEXP == "k"] <- 1e+03
+noaa$CROPDMGVAL[noaa$CROPDMGEXP == "m"] <- 1e+06
+noaa$CROPDMGVAL[noaa$CROPDMGEXP == "M"] <- 1e+06
+noaa$CROPDMGVAL[noaa$CROPDMGEXP == "B"] <- 1e+09
+noaa$CROPDMGVAL[noaa$CROPDMGEXP == "0"] <- 1e+00
+noaa$CROPDMGVAL[noaa$CROPDMGEXP == "2"] <- 1e+02
+noaa$CROPDMGVAL[noaa$CROPDMGEXP == "?"] <- 0
+noaa$PROPDMGVAL <- noaa$PROPDMG * noaa$PROPDMGVAL
+noaa$CROPDMGVAL <- noaa$CROPDMG * noaa$CROPDMGVAL
+```
+Results:
+
+Property Damage
+```{r}
+FstQ <- aggregate(PROPDMGVAL ~ EVTYPE, data = noaa, sum)
+FstQ <- FstQ[order(-FstQ$PROPDMGVAL),]
+FstQ[1:10,]
+```
+
+```{r, ggplot}
+
+library("ggplot2")
+library("knitr")
+ggplot(data = FstQ[1:10, ],aes(x=PROPDMGVAL,y=EVTYPE))+
+      geom_bar(stat="identity" ,fill = "#34A287") +
+      theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+      coord_flip() + xlab("Total number of Property damage") +  ylab("Event Types") +
+      ggtitle("Top Ten of event types with the highest Property damage")
+      ScdQ <- aggregate(CROPDMGVAL ~ EVTYPE, data = noaa, sum)
+```
+FLOOD has the greatest economic consequence when we analyze Property Damage.
+
+Crop Damage
+```{r}
+ScdQ <- ScdQ[order(-ScdQ$CROPDMGVAL),]
+ScdQ[1:10,]
+```
+```{r, fig.width=7}
+library(ggplot2)
+# bigger fig.width
+ggplot(data = ScdQ[1:10, ],aes(x=CROPDMGVAL,y=EVTYPE))+
+      geom_bar(stat="identity" ,fill = "violet") +
+      theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+      coord_flip() + xlab("Total number of Crop damage") +  ylab("Event Types") +
+      ggtitle("Top Ten of event types with the highest Crop damage")
+
+```      
+DROUGHT has the greatest economic consequence when we analyze Crop Damage      
+      
+Fatalities and Injuries 
+```{r}
+noaa$HARM <- noaa$FATALITIES + noaa$INJURIES
+TrdQ <- aggregate(HARM ~ EVTYPE, data = noaa, sum)
+TrdQ <- TrdQ[order(-TrdQ$HARM),]
+TrdQ[1:10,]
+```
+```{r, fig.width=7}
+library(ggplot2)
+# bigger fig.width
+ggplot(data = TrdQ[1:10, ],aes(x=HARM,y=EVTYPE))+
+      geom_bar(stat="identity" ,fill = "skyblue3") +
+      theme(axis.text.x = element_text(angle = 45, hjust=1)) +
+      coord_flip() + xlab("Total number of Fatalities + Injuries") +  ylab("Event Types") +
+      ggtitle("Top Ten of event types with the highest impact on Population Health")
+    
+```
+TORNADO are most harmful with respect to population health.
+
